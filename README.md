@@ -873,7 +873,7 @@ Any third-party product names, brands, images, or trademarks used within sample 
 GitHub:
 
 ```text
-https://github.com/
+https://github.com/Jimmy42j
 ```
 
 ---

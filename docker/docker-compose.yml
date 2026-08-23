@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: clothing_ecommerce_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: clothing_ecommerce
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../database:/docker-entrypoint-initdb.d
+    networks:
+      - clothing_network
+
+  # PHP Backend
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: clothing_ecommerce_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend:/var/www/html
+    environment:
+      - DB_HOST=mysql
+      - DB_NAME=clothing_ecommerce
+      - DB_USER=app_user
+      - DB_PASS=app_password
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - AI_SERVICE_URL=http://ai-service:5000
+    depends_on:
+      - mysql
+    networks:
+      - clothing_network
+
+  # AI Recommendation Service
+  ai-service:
+    build:
+      context: ../ai-service
+      dockerfile: ../docker/Dockerfile.ai-service
+    container_name: clothing_ecommerce_ai
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - DEBUG=false
+    networks:
+      - clothing_network
+
+  # Frontend (for production)
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: clothing_ecommerce_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - clothing_network
+
+  # Nginx (Load Balancer/Reverse Proxy)
+  nginx:
+    image: nginx:alpine
+    container_name: clothing_ecommerce_nginx
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - clothing_network
+
+volumes:
+  mysql_data:
+
+networks:
+  clothing_network:
+    driver: bridge
